@@ -4,37 +4,39 @@ let divisors = getBestDivisors(ELEMENTS.length)
 
 let remainingElements = ELEMENTS.slice()
 
-for(let i = 0; i < divisors.min; i++){
-	let tr = document.createElement("tr")
-	for(let j = 0; j < divisors.max; j++){
-		let element = remainingElements.splice(randomIndex(remainingElements), 1)[0]
-		let td = document.createElement("td")
-		td.appendChild(document.createTextNode(element))
-		tr.appendChild(td)
+function init() {
 
-		td.setAttribute("data-y", i)
-		td.setAttribute("data-x", j)
-		td.active = 0
-		td.addEventListener('click', toggleElement)
+	for(let i = 0; i < divisors.min; i++){
+		let tr = document.createElement("tr")
+		for(let j = 0; j < divisors.max; j++){
+			let element = remainingElements.splice(randomIndex(remainingElements), 1)[0]
+			let td = document.createElement("td")
+			td.appendChild(document.createTextNode(element))
+			tr.appendChild(td)
+
+			td.active = 0
+			td.addEventListener('click', toggleElement)
+		}
+		tbody.appendChild(tr)
 	}
-	tbody.appendChild(tr)
-}
 
 
-document.querySelector("#golden").addEventListener('click', () => {
-	let remainingElements = []
-	for(const tr of tds){
-		for(const td of tr){
+	document.querySelector("#golden").addEventListener('click', () => {
+		let remainingElements = []
+		for(let td of all()){
 			if(!isClicked(td))
 				remainingElements.push(td)
 		}
-	}
 
-	let element = remainingElements.splice(randomIndex(remainingElements), 1)
+		let element = remainingElements.splice(randomIndex(remainingElements), 1)
 
-	if(element.length > 0)
-		toggleElement.apply(element[0], null)
-})
+		if(element.length > 0)
+			toggleElement.apply(element[0], null)
+	})
+
+}
+
+init()
 
 let tds = []
 
@@ -90,90 +92,48 @@ function isClicked(element) {
 
 
 function forEachAlignement(element, active) {
-
-	let x = parseInt(element.getAttribute('data-x'))
-	let y = parseInt(element.getAttribute('data-y'))
-
 	if(active)
 		setSuccess(element)
 	else
 		setDefault(element)
-
-	let activeCount = 0
 	
 	// Y
 	for(let x = 0; x < divisors.max; x++){
-		activeCount = 0
-		for(let i = 0; i < divisors.min; i++) {
-			let current = tds[i][x]
-
-			if(isClicked(current))
-				activeCount++
-		}
-
-		for(let i = 0; i < divisors.min; i++) {
-			let current = tds[i][x]
-			completedLine(activeCount, current, divisors.min)
-		}
-	
+		processAlignment(column.bind(this, x))
 	}
 	
-
-
 	// X
 	for(let y = 0; y < divisors.min; y++){
-		activeCount = 0
-		for(let i = 0; i < divisors.max; i++) {
-			let current = tds[y][i]
-			if(isClicked(current))
-				activeCount++
-		}
-		for(let i = 0; i < divisors.max; i++) {
-			let current = tds[y][i]
-			completedLine(activeCount, current, divisors.max)
-		}
+		processAlignment(line.bind(this, y))
 	}
-
 
 	// Diagonals on square
 	if(divisors.min == divisors.max) {
 		// Diagonal Up-Left to Down-Right
-
-		activeCount = 0
-		for(let i = 0; i < divisors.max; i++) {
-			let current = tds[i][i]
-			if(isClicked(current))
-				activeCount++
-		}
-		for(let i = 0; i < divisors.max; i++) {
-			let current = tds[i][i]
-			completedLine(activeCount, current, divisors.max)
-		}
+		processAlignment(diagonal)
 		
 		// Diagonal Up-Right to Down-Left
-		activeCount = 0
-		for(let i = 0; i < divisors.max; i++) {
-			let current = tds[i][divisors.max - i - 1]
-			if(isClicked(current))
-				activeCount++
-		}
-		for(let i = 0; i < divisors.max; i++) {
-			let current = tds[i][divisors.max - i - 1]
-			completedLine(activeCount, current, divisors.max)
-		}
+		processAlignment(antiDiagonal)
 	}	
 	
 	// printActive()
 
-	for(let i = 0; i < divisors.max; i++) {
-		for(let j = 0; j < divisors.min; j++) {
-			let current = tds[j][i]
-			if(current.active == 0 && isActive(current))
-				setSuccess(current)
-			current.active = 0
-		}
+	for(let current of all()) {
+		if(current.active == 0 && isActive(current))
+			setSuccess(current)
+		current.active = 0
 	}
 
+}
+
+// Generators
+
+function* all() {
+	for(let i = 0; i < divisors.max; i++) {
+		for(let j = 0; j < divisors.min; j++) {
+			yield tds[j][i]
+		}
+	}
 }
 
 function* diagonal() {
@@ -200,10 +160,19 @@ function* column(x) {
 	}
 }
 
-function completedLine(activeCount, current, max) {
-	if(activeCount == max){
-		setActive(current)
-		current.active++
+function processAlignment(generator) {
+	let activeCount = 0
+	let max = 0
+	for(let current of generator()) {
+		if(isClicked(current))
+			activeCount++
+		max++
+	}
+	for(let current of generator()) {
+		if(activeCount == max){
+			setActive(current)
+			current.active++
+		}
 	}
 }
 
